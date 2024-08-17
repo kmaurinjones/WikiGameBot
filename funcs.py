@@ -3,7 +3,8 @@ from bs4 import BeautifulSoup
 import numpy as np
 from scipy.spatial.distance import cosine
 from sentence_transformers import SentenceTransformer
-model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
+# model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2') # baseline
+model = SentenceTransformer('sentence-transformers/multi-qa-MiniLM-L6-dot-v1') # seems to perform better than all-MiniLM-L6-v2
 
 def get_page_summary(wiki_page):
     """
@@ -98,7 +99,18 @@ def validate_pages(wiki_page):
     links = list(wiki_page.links.keys())
 
     # various unwanted prefixes
-    bad_prefixes = ["list of", "history of", "Template:", "Wikipedia:", "Category:", "Portal:", "Talk:", "Template talk:"]
+    bad_prefixes = [
+        "list of", "history of", "Template:", "Wikipedia:",
+        "Category:", "Portal:", "Talk:", "Template talk:",
+        "Special:", "Help:", "File:", "Main_Page",
+        "User:", "User_talk:", "File_talk:", "MediaWiki:",
+        "MediaWiki_talk:", "Module:", "Module_talk:", "Draft:",
+        "Draft_talk:", "TimedText:", "TimedText_talk:", "Book:",
+        "Book_talk:", "Education_Program:", "Education_Program_talk:",
+        "Education_Program_talk:", "Course:", "Course_talk:", "Draft:",
+        "Special:", "Special_talk:"
+    ]
+
     links = [link for link in links 
         if not any(link.lower().startswith(prefix.lower()) for prefix in bad_prefixes) 
         and any(char.isalpha() for char in link) # at least one alpha char
