@@ -63,11 +63,11 @@ if submitted:
     game = WikiGameBot(wiki_wiki = wiki_wiki, start_topic = start_topic, target_topic = target_topic)
 
     # Displaying the start and target topics and their repsective summaries
-    with st.expander(f"**Wiki Results for '{game.start_topic.replace(' ', '_')}'**"):
+    with st.expander(f"**Wiki Results for '{game.start_topic.replace('_', ' ')}'**"):
         st.markdown(f'- *"{game.starting_url}"*')
         st.markdown(f'- *"{game.current_summary}"*')
 
-    with st.expander(f"**Wiki Results for '{game.target_topic.replace(' ', '_')}'**"):
+    with st.expander(f"**Wiki Results for '{game.target_topic.replace('_', ' ')}'**"):
         st.markdown(f'- *"{game.target_url}"*')
         st.markdown(f'- *"{game.target_summary}"*')
 
