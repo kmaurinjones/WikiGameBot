@@ -36,10 +36,16 @@ with st.form("wiki_game_form"):
     st.write("Enter a topic to start on and/or a topic to end on. If left blank, a topic will be chosen randomly.")
     
     # User input for Start Topic
-    start_topic = st.text_input("Start Topic")
+    start_topic = st.text_input(
+        label="Start Topic",
+        placeholder="Leave this blank to randomly select a start topic"
+    )
     
     # User input for Target Topic
-    target_topic = st.text_input("Target Topic")
+    target_topic = st.text_input(
+        label="Target Topic",
+        placeholder="Leave this blank to randomly select a target topic"
+    )
     
     # Submit button for the form
     submitted = st.form_submit_button("Begin")
