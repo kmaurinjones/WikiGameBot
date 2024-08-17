@@ -12,7 +12,7 @@ def line_plot(game_csv):
     # Original line plot
     fig = px.line(game_csv, x='turn', y='similarity_to_target', markers=True,
                   title='Line Plot of Similarity Over Time',
-                  labels={'turn': 'Wiki Page Number', 'similarity_to_target': 'Similarity to Target'})
+                  labels={'turn': 'Game Turn Number', 'similarity_to_target': 'Similarity to Target Topic'})
 
     fig.update_traces(hovertemplate='Wiki Page Number: %{x}<br>Similarity: %{y}<br>Page Title: %{customdata[0]}<br>Turn Time (seconds): %{customdata[1]}',
                       customdata=game_csv[['current_topic', 'turn_time']])
@@ -30,16 +30,16 @@ def line_plot(game_csv):
     # Add the trend line to the plot
     fig.add_scatter(x=trend_x, y=trend_y,
                     mode='lines', 
-                    line=dict(dash='dot', color='rgba(255, 105, 180, 0.8)', width=3),  # Complementary color with less opacity, thicker line
-                    name='Polynomial Trend Line')
+                    line=dict(dash='dot', color='rgba(255, 105, 180, 0.8)', width=3))  # Complementary color with less opacity, thicker line
 
-    # Update the layout for the title and the background colors
+    # Update the layout for the title, background colors, and hide the legend
     fig.update_layout({
         'title': {
-            'text': 'Similarity Over Time',
+            'text': 'Similarity Over Game Turns',
             'x': 0.5,  # Centers the title
             'xanchor': 'center'
-        }
+        },
+        'showlegend': False  # Hide the legend
     })
 
     st.plotly_chart(fig)  # Use Streamlit's function to display Plotly chart
