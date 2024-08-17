@@ -23,6 +23,10 @@ Feel free to explore the code, contribute, or provide feedback to enhance this p
 
 Enjoy the WikiGame adventure!
 
+## Example
+
+![WikiGameBot](WikiGameBot-img1.png)
+
 ## Contact
 
 You can reach out to me via one of the following ways to connect about this project or anything else.
