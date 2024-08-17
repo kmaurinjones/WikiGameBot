@@ -13,9 +13,9 @@ def line_plot(game_csv):
     # Original line plot
     fig = px.line(game_csv, x='turn', y='similarity_to_target', markers=True,
                   title='Line Plot of Similarity Over Time',
-                  labels={'turn': 'Game Turn Number', 'similarity_to_target': 'Similarity to Target Topic'})
+                  labels={'turn': 'Page Visited', 'similarity_to_target': 'Similarity to Target Topic'})
 
-    fig.update_traces(hovertemplate='Wiki Page Number: %{x}<br>Similarity: %{y}<br>Page Title: %{customdata[0]}<br>Turn Time (seconds): %{customdata[1]}',
+    fig.update_traces(hovertemplate='Page Visited: %{x}<br>Similarity: %{y}<br>Page Title: %{customdata[0]}<br>Turn Time (seconds): %{customdata[1]}',
                       customdata=game_csv[['current_topic', 'turn_time']])
 
     # Polynomial trend line
