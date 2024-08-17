@@ -6,9 +6,9 @@ WikiGameBot is a web application that lets you see a computer play the WikiGame,
 
 ## How it Works
 
-### Embeddings Model
+### Embeddings
 
-WikiGameBot utilizes HuggingFace's SentenceTransformer model, specifically 'sentence-transformers/all-MiniLM-L6-v2,' for generating embeddings of Wikipedia summaries. This model is employed to represent Wikipedia page content as high-dimensional vectors.
+WikiGameBot utilizes HuggingFace's SentenceTransformer models to generate embeddings of Wikipedia summaries, with which cosine similarity is used to calculate the topic nearest to the target at any given page.
 
 ### Cosine Similarity
 
