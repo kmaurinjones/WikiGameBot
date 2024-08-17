@@ -4,6 +4,10 @@ import pandas as pd
 import plotly.express as px
 from sklearn.manifold import TSNE
 
+# ignore RankWarning from Polyfit
+import warnings
+warnings.simplefilter('ignore', np.RankWarning)
+
 def line_plot(game_csv):
     """Create a line plot of similarity over time. Uses a polynomial trend line."""
     # Original line plot
