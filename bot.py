@@ -239,13 +239,8 @@ class WikiGameBot():
         # Create an empty container for the plot
         plot_container = st.empty()
 
-        # # add Results header to sidebar
-        # with st.sidebar:
-        #     st.markdown("# Results")
-        #     # divider above each turn iteration -- therefore, not needed here
         # Create a placeholder for the sidebar content
         sidebar_placeholder = st.sidebar.empty()
-
 
         # keep playing until target is reached
         while True:
@@ -286,7 +281,7 @@ class WikiGameBot():
                     f"**Next topic:** [{next_topic.replace('_', ' ')}](https://en.wikipedia.org/wiki/{next_topic.replace(' ', '_')})",
                     f"**Target topic:** {self.target_topic.replace('_', ' ')}",
                     f"**Current similarity to target:** {round(similarity_to_target, 2)}",
-                    f"**Total Average similarity to target:** {round(sum(self.game_log['similarity_to_target']) / len(self.game_log['similarity_to_target']), 2)}",
+                    f"**Total average similarity to target:** {round(sum(self.game_log['similarity_to_target']) / len(self.game_log['similarity_to_target']), 2)}",
                 ]
 
                 self.printouts.append(printouts)
@@ -304,7 +299,10 @@ class WikiGameBot():
 
                     # show both plots in container
                     line_plot(game_csv=game_df)
-                    # plot_topic_clusters(game_csv=game_df)
+
+                    # this logically only makes sense if there's more than 1 turn of data
+                    if len(game_df) > 1:
+                        plot_topic_clusters(game_csv=game_df)
 
             # set new next_topic to current topic and loop
             current_topic = next_topic
