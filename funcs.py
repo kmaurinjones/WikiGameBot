@@ -103,6 +103,7 @@ def validate_pages(wiki_page):
         if not any(link.lower().startswith(prefix.lower()) for prefix in bad_prefixes) 
         and any(char.isalpha() for char in link) # at least one alpha char
     ]
+
     return links
 
 def get_most_similar_strings(reference_string: str, candidates_list: list[str], n = 10):

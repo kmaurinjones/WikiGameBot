@@ -1,8 +1,8 @@
 import streamlit as st
+import string
 from funcs import *
 from bot import *
 from plots import *
-import pandas as pd
 
 # doing this first to ensure things will work
 def generate_random_string(length):
@@ -19,54 +19,60 @@ wiki_wiki = wikipediaapi.Wikipedia(
     )
 
 # Setting the page title
-st.set_page_config(page_title = "WikiGameBot")
+st.set_page_config(
+    page_title = "WikiGameBot",
+    layout = "centered"
+)
 
 # Title of the web app
 st.title("WikiGameBot")
 
-# User input for Start Topic
-st.write("Enter a topic to start on and/or a topic to end on. If left blank, a topic will be chosen randomly.")
-start_topic = st.text_input("Start Topic")#, "Enter the starting topic here")
+submitted = None
 
-# User input for Target Topic
-target_topic = st.text_input("Target Topic")#, "Enter the target topic here")
+# Form for user inputs
+with st.form("wiki_game_form"):
+    st.write("Enter a topic to start on and/or a topic to end on. If left blank, a topic will be chosen randomly.")
+    
+    # User input for Start Topic
+    start_topic = st.text_input("Start Topic")
+    
+    # User input for Target Topic
+    target_topic = st.text_input("Target Topic")
+    
+    # Submit button for the form
+    submitted = st.form_submit_button("Begin")
+    
+if submitted:
 
-# if start not passed, get a random one
-if not start_topic:
-    start_topic = get_random_wiki_page(wiki_wiki)
+    # if start not passed, get a random one
+    if not start_topic:
+        start_topic = get_random_wiki_page(wiki_wiki)
 
-# if target topic not passed, get a random one
-if not target_topic:
-    target_topic = get_random_wiki_page(wiki_wiki)
-
-# User begins and game starts
-if st.button("Begin"):
-    st.divider()
+    # if target topic not passed, get a random one
+    if not target_topic:
+        target_topic = get_random_wiki_page(wiki_wiki)
 
     game = WikiGameBot(wiki_wiki = wiki_wiki, start_topic = start_topic, target_topic = target_topic)
-    st.write("Start Topic: ", game.start_topic)
-    st.write("Target Topic: ", game.target_topic)
-    game.play_game()
+    # game = WikiGameBot(start_topic = start_topic, target_topic = target_topic) # for non-api version
+
+    # Displaying the start and target topics and their repsective summaries
+    st.markdown(f"Start Topic: '{game.start_topic}' {game.starting_url}")
+    st.markdown(f'- *"{game.current_summary}"*')
+
+    st.markdown(f"Target Topic: '{game.target_topic}' {game.target_url}")
+    st.markdown(f'- *"{game.target_summary}"*')
     
     st.divider()
 
-    # plotting similarity over time
-    line_plot(game_csv = pd.DataFrame(game.game_log))
-
-    # plotting embeddings
-    # plot_embeddings(game_csv = pd.DataFrame(game.game_log))
-    
-    # plotting topic clusters
-    # plot_topic_clusters(game_csv = pd.DataFrame(game.game_log))
+    game.play_game()
 
 outro_message = """
 Thanks for checking out this app. If you have any questions or comments or would like to connect for any reason, you can reach me at:
-- Email: kmaurinjones@gmail.com
 - LinkedIn: https://www.linkedin.com/in/kmaurinjones/
 """.strip()
 st.write(outro_message)
 
 disclaimer = """
-Disclaimer: This creator of this webapp and author of this code is not responsible for the content produced by the app. The content produced by this app is a result of content sourced from Wikipedia and is property of Wikipedia.
+Disclaimer: The creator of this web app and author of this code is not responsible for the content produced by the app. The content produced by this app is a result of content sourced from Wikipedia and is property of Wikipedia.
 """.strip()
 st.write(disclaimer)

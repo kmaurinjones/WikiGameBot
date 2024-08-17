@@ -5,6 +5,8 @@ import string
 import wikipediaapi
 import streamlit as st
 from funcs import *
+import pandas as pd
+from plots import line_plot, plot_topic_clusters
 
 class WikiGameBot():
     """
@@ -88,10 +90,12 @@ class WikiGameBot():
         assert self.start_topic != self.target_topic, "Please enter different start and target topics."
         
         target_page = self.wiki_wiki.page(self.target_topic)
-        self.current_summary = "" # this is overwritten after game starts
+        self.current_summary = get_page_summary(self.wiki_wiki.page(self.start_topic))
         self.target_summary = get_page_summary(target_page)
         self.current_embedding = None
         self.printouts = []
+        self.starting_url = f"https://en.wikipedia.org/wiki/{self.start_topic}"
+        self.target_url = f"https://en.wikipedia.org/wiki/{self.target_topic}"
 
         # running value of topic that is most similar to the target
         self.most_similar_to_target = {
@@ -139,7 +143,7 @@ class WikiGameBot():
         else:
             self.target_topic = get_random_wiki_page(self.wiki_wiki)
 
-    def take_turn(self, current_topic, visited):
+    def take_turn(self, current_topic, visited, correct_path=False):
         """
         Processes a turn in the Wiki game.
 
@@ -153,6 +157,9 @@ class WikiGameBot():
 
         visited : list
             A list of already visited topics to avoid repetition.
+
+        correct_path : bool, optional
+            If True, the function will try to correct a trend of decreasing similarity to the target.
 
         Returns
         -------
@@ -178,23 +185,30 @@ class WikiGameBot():
         most_similar_emb = embs[top_n_pages_to_summaries[most_similar_topic]]
         self.current_embedding = most_similar_emb
 
-        ### if similarity to target is less than the current most similar of the run thus far,
-        # calculate similarities between all summary embeddings and embedding for the previously most similar topic
-        # this serves as a way to potentially redirect from topic rabbit holes
-        # this checks if last 3 similarity values were each trending down (returns bool)
-        trending_down_3 = all(self.game_log['similarity_to_target'][i] < self.game_log['similarity_to_target'][i - 1] for i in range(len(self.game_log['similarity_to_target']) - 1, len(self.game_log['similarity_to_target']) - 3, -1)) if len(self.game_log['similarity_to_target']) >= 3 else False
-        if similarity_to_target < self.most_similar_to_target['similarity'] and similarity_to_target < 0.3 and trending_down_3:
-            embs, top_n_pages, top_n_similarities = get_most_similar_strings(self.most_similar_to_target['summary'], list(top_n_summaries_to_pages.keys()), n = top_n)
-            most_similar_topic, similarity_to_target = top_n_summaries_to_pages[top_n_pages[0]], top_n_similarities[0]
-            most_similar_emb = embs[top_n_pages_to_summaries[most_similar_topic]]
-            self.current_embedding = most_similar_emb
-        else:
-            self.most_similar_to_target = {
-                'topic' : most_similar_topic,
-                'summary' : top_n_pages_to_summaries[most_similar_topic],
-                'embedding': most_similar_emb,
-                'similarity' : similarity_to_target,
-            }
+        if correct_path:
+            ### if similarity to target is less than the current most similar of the run thus far,
+            # calculate similarities between all summary embeddings and embedding for the previously most similar topic
+            # this serves as a way to potentially redirect from topic rabbit holes
+            # this checks if last 3 similarity values were each trending down (returns bool)
+            trending_down_3 = all(
+                self.game_log['similarity_to_target'][i] < self.game_log['similarity_to_target'][i - 1] for i in range(
+                    len(self.game_log['similarity_to_target']) - 1, len(
+                        self.game_log['similarity_to_target']) - 3, -1
+                    )
+                ) if len(self.game_log['similarity_to_target']) >= 3 else False
+            
+            if similarity_to_target < self.most_similar_to_target['similarity'] and similarity_to_target < 0.3 and trending_down_3:
+                embs, top_n_pages, top_n_similarities = get_most_similar_strings(self.most_similar_to_target['summary'], list(top_n_summaries_to_pages.keys()), n = top_n)
+                most_similar_topic, similarity_to_target = top_n_summaries_to_pages[top_n_pages[0]], top_n_similarities[0]
+                most_similar_emb = embs[top_n_pages_to_summaries[most_similar_topic]]
+                self.current_embedding = most_similar_emb
+            else:
+                self.most_similar_to_target = {
+                    'topic' : most_similar_topic,
+                    'summary' : top_n_pages_to_summaries[most_similar_topic],
+                    'embedding': most_similar_emb,
+                    'similarity' : similarity_to_target,
+                }
 
         return most_similar_topic, similarity_to_target # return page topic whose summary that is most similar to target summary
     
@@ -222,9 +236,19 @@ class WikiGameBot():
         # to prevent duplicates
         visited = set()
 
+        # Create an empty container for the plot
+        plot_container = st.empty()
+
+        # # add Results header to sidebar
+        # with st.sidebar:
+        #     st.markdown("# Results")
+        #     # divider above each turn iteration -- therefore, not needed here
+        # Create a placeholder for the sidebar content
+        sidebar_placeholder = st.sidebar.empty()
+
+
         # keep playing until target is reached
         while True:
-
             # for turn time tracking
             turn_start = time.time()
 
@@ -235,10 +259,14 @@ class WikiGameBot():
             # for turn time tracking
             turn_time = time.time() - turn_start
 
+            # Check win condition here, before logging the turn
+            if current_topic.lower().strip() == self.target_topic.replace('_', ' ').lower().strip():
+                break
+
             self.log_turn(
                 {
                     'starting_topic': self.start_topic,
-                    'target_topic': self.start_topic,
+                    'target_topic': self.target_topic,  # Fixed: was self.start_topic
                     'turn': turn_num,             
                     'current_topic': current_topic,
                     'current_summary': self.current_summary,
@@ -248,38 +276,48 @@ class WikiGameBot():
                 }
             )
 
-
             if verbose:
                 printouts = [
-                    "-" * 50,
-                    f"Turn: {turn_num}",
-                    f"Turn time: {round(turn_time, 2)}s",
-                    f"Total time: {round(sum(self.game_log['turn_time']), 2)}s",
-                    f"Start topic: {self.start_topic.replace('_', ' ')}",
-                    f"Current topic: {current_topic.replace('_', ' ')}",
-                    f"Next topic: {next_topic.replace('_', ' ')}",
-                    f"Target topic: {self.target_topic.replace('_', ' ')}",
-                    f"Current similarity to target: {round(similarity_to_target, 2)}",
-                    "-" * 50,
+                    f"**Turn:** {turn_num}",
+                    f"**Turn time:** {round(turn_time, 2)}s",
+                    f"**Total time:** {round(sum(self.game_log['turn_time']), 2)}s",
+                    f"**Start topic:** {self.start_topic.replace('_', ' ')}",
+                    f"**Current topic:** [{current_topic.replace('_', ' ')}](https://en.wikipedia.org/wiki/{current_topic.replace(' ', '_')})",
+                    f"**Next topic:** [{next_topic.replace('_', ' ')}](https://en.wikipedia.org/wiki/{next_topic.replace(' ', '_')})",
+                    f"**Target topic:** {self.target_topic.replace('_', ' ')}",
+                    f"**Current similarity to target:** {round(similarity_to_target, 2)}",
+                    f"**Total Average similarity to target:** {round(sum(self.game_log['similarity_to_target']) / len(self.game_log['similarity_to_target']), 2)}",
                 ]
 
                 self.printouts.append(printouts)
-                
-                # print progress
-                for i in self.printouts[-1]:
-                    st.write(i)
+                # Update the sidebar content
+                with sidebar_placeholder.container():
+                    st.markdown("# Results")
+                    for turn_info in reversed(self.printouts):
+                        st.divider()
+                        for i in turn_info:
+                            st.write(i)
 
-            # if same as target topic, game is done
-            if current_topic.lower().strip() == self.target_topic.replace('_', ' ').lower().strip():
-                st.write(f"Congratulations! WikiGameBot has finished the game in {turn_num} turns, in {round(sum(self.game_log['turn_time']), 2)} seconds!")
-                st.write(f"Average topic similarity was {round(sum(self.game_log['similarity_to_target']) / len(self.game_log['similarity_to_target']), 2)}.")
-                break
+                # update main plot in the empty container
+                with plot_container.container():
+                    game_df = pd.DataFrame(self.game_log)
 
-            # else, set new next_topic to current topic and loop
+                    # show both plots in container
+                    line_plot(game_csv=game_df)
+                    # plot_topic_clusters(game_csv=game_df)
+
+            # set new next_topic to current topic and loop
             current_topic = next_topic
 
             # increment turn
             turn_num += 1
+
+        # Game completion message (moved outside the loop)
+        with st.sidebar:
+            st.divider()
+        st.divider()
+        st.write(f"Congratulations! WikiGameBot has finished the game in {turn_num} turns, in {round(sum(self.game_log['turn_time']), 2)} seconds!")
+        st.write(f"Average topic similarity was {round(sum(self.game_log['similarity_to_target']) / len(self.game_log['similarity_to_target']), 2)}.")
 
 """
 Example usage:
