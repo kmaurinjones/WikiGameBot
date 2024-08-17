@@ -33,17 +33,12 @@ def line_plot(game_csv):
                     mode='lines', 
                     line=dict(dash='dot', color='rgba(255, 105, 180, 0.8)', width=3))  # Complementary color with less opacity, thicker line
 
-    # Update the layout for the title, background colors, and x-axis ticks
+    # Update the layout for the title, background colors, and hide the legend
     fig.update_layout({
         'title': {
             'text': 'Similarity Over Game Turns',
             'x': 0.5,  # Centers the title
             'xanchor': 'center'
-        },
-        'xaxis': {
-            'tickmode': 'linear',
-            'dtick': 1,  # Ensure x-axis shows only integers
-            'title': 'Page Visited'
         },
         'showlegend': False  # Hide the legend
     })
