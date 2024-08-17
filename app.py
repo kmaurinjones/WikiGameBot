@@ -1,5 +1,7 @@
-import streamlit as st
+import random
 import string
+import streamlit as st
+import wikipediaapi
 from funcs import *
 from bot import *
 from plots import *
@@ -53,15 +55,16 @@ if submitted:
         target_topic = get_random_wiki_page(wiki_wiki)
 
     game = WikiGameBot(wiki_wiki = wiki_wiki, start_topic = start_topic, target_topic = target_topic)
-    # game = WikiGameBot(start_topic = start_topic, target_topic = target_topic) # for non-api version
 
     # Displaying the start and target topics and their repsective summaries
-    st.markdown(f"Start Topic: '{game.start_topic}' {game.starting_url}")
-    st.markdown(f'- *"{game.current_summary}"*')
+    with st.expander(f"**'{game.start_topic}'**"):
+        st.markdown(f'- *"{game.starting_url}"*')
+        st.markdown(f'- *"{game.current_summary}"*')
 
-    st.markdown(f"Target Topic: '{game.target_topic}' {game.target_url}")
-    st.markdown(f'- *"{game.target_summary}"*')
-    
+    with st.expander(f"**'{game.target_topic}'**"):
+        st.markdown(f'- *"{game.target_url}"*')
+        st.markdown(f'- *"{game.target_summary}"*')
+
     st.divider()
 
     game.play_game()

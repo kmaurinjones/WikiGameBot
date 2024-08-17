@@ -3,9 +3,6 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 from sklearn.manifold import TSNE
-from sklearn.cluster import KMeans
-import matplotlib.pyplot as plt
-from transformers import pipeline
 
 def line_plot(game_csv):
     """Create a line plot of similarity over time. Uses a polynomial trend line."""
@@ -45,131 +42,71 @@ def line_plot(game_csv):
     st.plotly_chart(fig)  # Use Streamlit's function to display Plotly chart
 
 def plot_topic_clusters(game_csv):
-    """Plot the topic clusters over time."""
-    embeddings = np.array(game_csv['embedding'].tolist())
+    """Create a 2D scatter plot of topics based on their embeddings, with similarity as point size."""
+    # Extract embeddings, topics, and similarities from the game_csv
+    embeddings = game_csv['embedding'].tolist()
+    topics = game_csv['current_topic'].tolist()
+    similarities = game_csv['similarity_to_target'].tolist()
 
-    # Function to calculate the optimal number of clusters
-    def calculate_optimal_k(sse, K):
-        second_derivative = np.diff(sse, 2)
-        optimal_k = K[np.argmax(second_derivative) + 1]
-        return optimal_k
+    # Convert embeddings to a numpy array
+    embeddings_array = np.array(embeddings)
 
-    # Elbow Method to find the optimal number of clusters
-    sse = []
-    max_clusters = min(len(embeddings), 10)
-    K = range(1, max_clusters + 1)
-    for k in K:
-        kmeans = KMeans(n_clusters=k, random_state=42)
-        kmeans.fit(embeddings)
-        sse.append(kmeans.inertia_)
+    # Check if we have enough data points for clustering
+    n_samples = len(embeddings_array)
+    if n_samples < 2:
+        st.warning("Not enough topics to create a meaningful cluster plot.")
+        return
 
-    optimal_k = calculate_optimal_k(sse, np.array(K))
-    optimal_k = min(optimal_k, len(embeddings))
+    # Adjust perplexity based on the number of samples
+    perplexity = min(30, n_samples - 1)
 
-    # K-Means Clustering with the optimal number of clusters
-    kmeans = KMeans(n_clusters=optimal_k, random_state=42)
-    game_csv['topic'] = kmeans.fit_predict(embeddings)
+    # Perform dimensionality reduction
+    tsne = TSNE(n_components=2, random_state=42, perplexity=perplexity)
+    topic_positions = tsne.fit_transform(embeddings_array)
 
-    # Create a pipeline for text classification
-    pipe = pipeline("text-classification", model="jonaskoenig/topic_classification_04", from_tf=True)
-
-    # Get representative texts for each topic
-    representative_texts = []
-    for topic in range(optimal_k):
-        sample = game_csv[game_csv['topic'] == topic].sample(1)['current_summary']
-        representative_texts.append(sample.iloc[0])
-
-    # Classify these texts to get labels
-    topic_labels = [pipe(text)[0]['label'] for text in representative_texts]
-
-    # Create a mapping from topic number to label
-    topic_label_mapping = {i: label for i, label in enumerate(topic_labels)}
-
-    # Apply this mapping to your game_csv DataFrame
-    game_csv['topic_label'] = game_csv['topic'].map(topic_label_mapping)
-
-    # Create the plot
-    plot_game_csv = game_csv[['turn', 'topic_label', 'current_topic']]
-    fig = px.line(plot_game_csv, x='turn', y='topic_label', markers=True, 
-                  title='Topic Distribution Over Turns',
-                  labels={'turn': 'Turn', 'topic_label': 'Topic'})
-
-    fig.update_traces(hovertemplate='Turn: %{x}<br>Topic: %{y}<br>Page Title: %{customdata}<extra></extra>',
-                      customdata=plot_game_csv['current_topic'])
-
-    fig.update_layout({
-        'title': {
-            'text': 'Topic Distribution Over Turns',
-            'x': 0.5,
-            'xanchor': 'center'
-        }
+    # Create a DataFrame for plotting
+    df_plot = pd.DataFrame({
+        'x': topic_positions[:, 0],
+        'y': topic_positions[:, 1],
+        'topic': topics,
+        'similarity': similarities
     })
 
-    st.plotly_chart(fig)
+    # Normalize similarities for point size (larger values for higher similarity)
+    df_plot['point_size'] = (df_plot['similarity'] - df_plot['similarity'].min()) / (df_plot['similarity'].max() - df_plot['similarity'].min())
+    df_plot['point_size'] = df_plot['point_size'] * 30 + 10  # Scale to a reasonable size range
 
-# def plot_topic_clusters(game_csv):
-#     # Assuming 'game_csv' contains 'embedding', 'turn', and 'text_column'
+    # Create an interactive scatter plot using Plotly with color gradient for similarity
+    fig = px.scatter(
+        df_plot, 
+        x='x', 
+        y='y', 
+        hover_data=['topic', 'similarity'],
+        text='topic',
+        size='point_size',
+        color='similarity',  # Color points by similarity
+        color_continuous_scale=px.colors.sequential.Viridis,  # Color gradient from 0 to 1
+        title='Topic Relationship and Similarity Map',
+        labels={
+            'x': '',  # Hide x-axis label
+            'y': '',  # Hide y-axis label
+            'similarity': 'Similarity to Target'
+        }
+    )
 
-#     embeddings = pd.DataFrame(game_csv['embedding'].tolist())
+    # Update layout to hide axis labels and ticks, show color bar, and center the title
+    fig.update_layout(
+        xaxis_title=None,
+        yaxis_title=None,
+        xaxis=dict(showticklabels=False, showgrid=False, zeroline=False),
+        yaxis=dict(showticklabels=False, showgrid=False, zeroline=False),
+        coloraxis_colorbar=dict(title="Similarity to Target"),  # Add color bar with title
+        title={'text': 'Topic Relationship and Similarity Map', 'x': 0.5, 'xanchor': 'center'},
+        font=dict(size=12)
+    )
 
-#     # Function to calculate the optimal number of clusters
-#     def calculate_optimal_k(sse, K):
-#         # Calculate the second derivative
-#         second_derivative = np.diff(sse, 2)
-#         optimal_k = K[np.argmax(second_derivative) + 1]  # +1 due to the difference in indices
-#         return optimal_k
+    # Update traces to show topic names
+    fig.update_traces(textposition='top center')
 
-#     # Elbow Method to find the optimal number of clusters
-#     sse = []
-#     max_clusters = min(len(embeddings), 10)  # Ensure max clusters do not exceed number of samples
-#     K = range(1, max_clusters + 1)
-#     for k in K:
-#         kmeans = KMeans(n_clusters=k, random_state=42)
-#         kmeans.fit(embeddings)
-#         sse.append(kmeans.inertia_)
-
-#     optimal_k = calculate_optimal_k(sse, np.array(K))
-
-#     # Ensure optimal_k is not greater than the number of samples
-#     optimal_k = min(optimal_k, len(embeddings))
-
-#     # K-Means Clustering with the optimal number of clusters
-#     kmeans = KMeans(n_clusters=optimal_k, random_state=42)
-#     game_csv['topic'] = kmeans.fit_predict(embeddings)
-
-#     # Create a pipeline for text classification
-#     pipe = pipeline("text-classification", model="jonaskoenig/topic_classification_04", from_tf = True)
-
-#     # Get representative texts for each topic
-#     representative_texts = []
-#     for topic in range(optimal_k):
-#         sample = game_csv[game_csv['topic'] == topic].sample(1)['text_column']  # Replace 'text_column' with the name of your text column
-#         representative_texts.append(sample.iloc[0])
-
-#     # Classify these texts to get labels
-#     topic_labels = [pipe(text)[0]['label'] for text in representative_texts]
-
-#     # Create a mapping from topic number to label
-#     topic_label_mapping = {i: label for i, label in enumerate(topic_labels)}
-
-#     # Apply this mapping to your game_csv DataFrame
-#     game_csv['topic_label'] = game_csv['topic'].map(topic_label_mapping)
-
-#     # Now modify the plotting code to use 'topic_label'
-#     plot_game_csv = game_csv.groupby(['turn', 'topic_label']).size().reset_index(name='count')
-#     fig = px.line(plot_game_csv, x='turn', y='topic_label', markers=True, 
-#                   title='Topic Selection Over Time',
-#                   labels={'turn': 'Turn', 'topic_label': 'Topic'})
-
-#     fig.update_traces(hovertemplate='Turn: %{x}<br>Topic: %{y}<br>Count: %{customdata}<extra></extra>',
-#                       customdata=plot_game_csv['count'])
-
-#     fig.update_layout({
-#         'title': {
-#             'text': 'Topic Distribution Over Turns',
-#             'x': 0.5,
-#             'xanchor': 'center'
-#         }
-#     })
-
-#     st.plotly_chart(fig)
+    # Show the plot
+    st.plotly_chart(fig, use_container_width=True)
